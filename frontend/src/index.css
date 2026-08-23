@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dark Mode (Primary) */
+  --vox-bg-base: #07090E;
+  --vox-surface-1: #0E131F;
+  --vox-surface-2: #161D2E;
+  --vox-surface-3: #1E273D;
+  --vox-surface-4: #28334E;
+
+  --vox-border-subtle: rgba(255, 255, 255, 0.08);
+  --vox-border-medium: rgba(255, 255, 255, 0.16);
+  --vox-border-strong: rgba(255, 255, 255, 0.28);
+  --vox-border-active: rgba(245, 158, 11, 0.55);
+
+  --vox-text-primary: #F8FAFC;
+  --vox-text-secondary: #94A3B8;
+  --vox-text-muted: #64748B;
+  --vox-text-disabled: #334155;
+
+  --vox-accent-gold: #F59E0B;
+  --vox-accent-gold-hover: #D97706;
+  --vox-accent-gold-glow: rgba(245, 158, 11, 0.15);
+
+  --vox-state-success: #10B981;
+  --vox-state-success-bg: rgba(16, 185, 129, 0.10);
+  --vox-state-warning: #F59E0B;
+  --vox-state-warning-bg: rgba(245, 158, 11, 0.10);
+  --vox-state-danger: #EF4444;
+  --vox-state-danger-bg: rgba(239, 68, 68, 0.10);
+  --vox-state-info: #0EA5E9;
+  --vox-state-info-bg: rgba(14, 165, 233, 0.10);
+}
+
+[data-theme="light"] {
+  --vox-bg-base: #F8FAFC;
+  --vox-surface-1: #FFFFFF;
+  --vox-surface-2: #F1F5F9;
+  --vox-surface-3: #E2E8F0;
+  --vox-surface-4: #CBD5E1;
+
+  --vox-border-subtle: #E2E8F0;
+  --vox-border-medium: #CBD5E1;
+  --vox-border-strong: #94A3B8;
+  --vox-border-active: #D97706;
+
+  --vox-text-primary: #0F172A;
+  --vox-text-secondary: #334155;
+  --vox-text-muted: #64748B;
+  --vox-text-disabled: #94A3B8;
+
+  --vox-accent-gold: #D97706;
+  --vox-accent-gold-hover: #B45309;
+  --vox-accent-gold-glow: rgba(217, 119, 6, 0.12);
+
+  --vox-state-success: #059669;
+  --vox-state-success-bg: rgba(5, 150, 105, 0.10);
+  --vox-state-warning: #D97706;
+  --vox-state-warning-bg: rgba(217, 119, 6, 0.10);
+  --vox-state-danger: #DC2626;
+  --vox-state-danger-bg: rgba(220, 38, 38, 0.10);
+  --vox-state-info: #0284C7;
+  --vox-state-info-bg: rgba(2, 132, 199, 0.10);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--vox-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vox-surface-3);
+  border-radius: 4px;
+  border: 2px solid var(--vox-bg-base);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vox-border-strong);
+}
+
+/* Reduced Motion Protocol */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

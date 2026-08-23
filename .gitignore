@@ -141,3 +141,17 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Hardhat generated local deployment data
+blockchain/ignition/deployments/chain-31337/
+
+# Local agent/AI cache files
+**/.claude/
+**/.agent/
+
+# AI agent skill files
+**/.agents/
