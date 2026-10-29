@@ -23,8 +23,8 @@ export const VotingStepper: React.FC<VotingStepperProps> = ({ currentStep }) => 
         <div className="absolute top-4 left-6 right-6 h-[2px] bg-vox-border-medium z-0" />
 
         {steps.map((step) => {
-          const isCompleted = currentStep > step.id;
-          const isActive = currentStep === step.id;
+          const isCompleted = currentStep > step.id || (step.id === 6 && currentStep >= 6);
+          const isActive = currentStep === step.id && !isCompleted;
 
           return (
             <div key={step.id} className="flex flex-col items-center gap-1.5 z-10">

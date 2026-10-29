@@ -9,8 +9,17 @@ describe("VoxChain", async () => {
     const publicClient = await viem.getPublicClient();
     const [admin, voter1, voter2] = await viem.getWalletClients();
 
+    const deployVoxChain = async () => {
+        return await viem.deployContract("VoxChain", [
+            admin.account.address,
+            "0x0000000000000000000000000000000000000000",
+            1n,
+            "VoxChain Baseline Test Org"
+        ]);
+    };
+
     it("should deploy with the correct admin", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         const storedAdmin = await publicClient.readContract({
             address: contract.address,
@@ -25,7 +34,7 @@ describe("VoxChain", async () => {
     });
 
     it("admin should be able to create an election", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         await admin.writeContract({
             address: contract.address,
@@ -48,7 +57,7 @@ describe("VoxChain", async () => {
     });
 
     it("admin should be able to add candidates", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         await admin.writeContract({
             address: contract.address,
@@ -86,7 +95,7 @@ describe("VoxChain", async () => {
     });
 
     it("admin should be able to register voters", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         await admin.writeContract({
             address: contract.address,
@@ -113,7 +122,7 @@ describe("VoxChain", async () => {
     });
 
     it("registered voter should be able to vote", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         await admin.writeContract({
             address: contract.address,
@@ -176,8 +185,9 @@ describe("VoxChain", async () => {
 
         assert.equal(voted, true);
     });
+
     it("should reject an unregistered voter", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         await admin.writeContract({
             address: contract.address,
@@ -210,8 +220,9 @@ describe("VoxChain", async () => {
             /Voter is not registered/
         );
     });
+
     it("should reject a voter who tries to vote twice", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         await admin.writeContract({
             address: contract.address,
@@ -267,8 +278,9 @@ describe("VoxChain", async () => {
             /Voter has already voted/
         );
     });
+
     it("should reject a non-admin from creating an election", async () => {
-        const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
         await assert.rejects(
             voter1.writeContract({
@@ -280,149 +292,153 @@ describe("VoxChain", async () => {
             /Only admin can create an election/
         );
     });
+
     it("should reject an invalid candidate", async () => {
-    const contract = await viem.deployContract("VoxChain");
+        const contract = await deployVoxChain();
 
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "createElection",
-        args: ["College Election"],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "addCandidate",
-        args: [1n, "Rahul"],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "registerVoter",
-        args: [1n, voter1.account.address],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "startElection",
-        args: [1n],
-    });
-
-    // Election has only Candidate 1
-    // Voter tries to vote for Candidate 2
-    await assert.rejects(
-        voter1.writeContract({
+        await admin.writeContract({
             address: contract.address,
             abi: contract.abi,
-            functionName: "castVote",
-            args: [1n, 2n],
-        }),
-        /Invalid candidate/
-    );
-});
-it("should reject adding a candidate after election starts", async () => {
-    const contract = await viem.deployContract("VoxChain");
+            functionName: "createElection",
+            args: ["College Election"],
+        });
 
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "createElection",
-        args: ["College Election"],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "addCandidate",
-        args: [1n, "Rahul"],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "startElection",
-        args: [1n],
-    });
-
-    await assert.rejects(
-        admin.writeContract({
+        await admin.writeContract({
             address: contract.address,
             abi: contract.abi,
             functionName: "addCandidate",
-            args: [1n, "Aman"],
-        }),
-        /Election already started/
-    );
-});
-it("should reject voting after election ends", async () => {
-    const contract = await viem.deployContract("VoxChain");
+            args: [1n, "Rahul"],
+        });
 
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "createElection",
-        args: ["College Election"],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "addCandidate",
-        args: [1n, "Rahul"],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "registerVoter",
-        args: [1n, voter1.account.address],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "startElection",
-        args: [1n],
-    });
-
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "endElection",
-        args: [1n],
-    });
-
-    await assert.rejects(
-        voter1.writeContract({
+        await admin.writeContract({
             address: contract.address,
             abi: contract.abi,
-            functionName: "castVote",
-            args: [1n, 1n],
-        }),
-        /Election has ended/
-    );
-});
-it("should reject ending an election before it starts", async () => {
-    const contract = await viem.deployContract("VoxChain");
+            functionName: "registerVoter",
+            args: [1n, voter1.account.address],
+        });
 
-    await admin.writeContract({
-        address: contract.address,
-        abi: contract.abi,
-        functionName: "createElection",
-        args: ["College Election"],
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "startElection",
+            args: [1n],
+        });
+
+        // Election has only Candidate 1
+        // Voter tries to vote for Candidate 2
+        await assert.rejects(
+            voter1.writeContract({
+                address: contract.address,
+                abi: contract.abi,
+                functionName: "castVote",
+                args: [1n, 2n],
+            }),
+            /Invalid candidate/
+        );
     });
 
-    await assert.rejects(
-        admin.writeContract({
+    it("should reject adding a candidate after election starts", async () => {
+        const contract = await deployVoxChain();
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "createElection",
+            args: ["College Election"],
+        });
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "addCandidate",
+            args: [1n, "Rahul"],
+        });
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "startElection",
+            args: [1n],
+        });
+
+        await assert.rejects(
+            admin.writeContract({
+                address: contract.address,
+                abi: contract.abi,
+                functionName: "addCandidate",
+                args: [1n, "Aman"],
+            }),
+            /Election already started/
+        );
+    });
+
+    it("should reject voting after election ends", async () => {
+        const contract = await deployVoxChain();
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "createElection",
+            args: ["College Election"],
+        });
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "addCandidate",
+            args: [1n, "Rahul"],
+        });
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "registerVoter",
+            args: [1n, voter1.account.address],
+        });
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "startElection",
+            args: [1n],
+        });
+
+        await admin.writeContract({
             address: contract.address,
             abi: contract.abi,
             functionName: "endElection",
             args: [1n],
-        }),
-        /Election has not started/
-    );
-});
+        });
+
+        await assert.rejects(
+            voter1.writeContract({
+                address: contract.address,
+                abi: contract.abi,
+                functionName: "castVote",
+                args: [1n, 1n],
+            }),
+            /Election has ended/
+        );
+    });
+
+    it("should reject ending an election before it starts", async () => {
+        const contract = await deployVoxChain();
+
+        await admin.writeContract({
+            address: contract.address,
+            abi: contract.abi,
+            functionName: "createElection",
+            args: ["College Election"],
+        });
+
+        await assert.rejects(
+            admin.writeContract({
+                address: contract.address,
+                abi: contract.abi,
+                functionName: "endElection",
+                args: [1n],
+            }),
+            /Election has not started/
+        );
+    });
 });

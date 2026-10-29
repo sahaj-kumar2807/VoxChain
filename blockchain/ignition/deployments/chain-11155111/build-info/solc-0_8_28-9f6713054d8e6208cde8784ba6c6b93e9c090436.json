@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-9f6713054d8e6208cde8784ba6c6b93e9c090436",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.13.0"
+  },
+  "userSourceNameMap": {
+    "contracts/VoxChain.sol": "project/contracts/VoxChain.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/VoxChain.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.28;\r\n\r\ncontract VoxChain {\r\n\r\n    address public admin;\r\n\r\n    struct Election {\r\n        uint256 id;\r\n        string name;\r\n        bool started;\r\n        bool ended;\r\n    }\r\n\r\n    struct Candidate {\r\n        uint256 id;\r\n        string name;\r\n        uint256 voteCount;\r\n    }\r\n\r\n    uint256 public electionCount;\r\n\r\n    mapping(uint256 => Election) public elections;\r\n\r\n    mapping(uint256 => Candidate[]) public candidates;\r\n\r\n    mapping(uint256 => mapping(address => bool)) public registeredVoters;\r\n\r\n    mapping(uint256 => mapping(address => bool)) public hasVoted;\r\n\r\n    constructor() {\r\n        admin = msg.sender;\r\n    }\r\n    event ElectionCreated(uint256 electionId, string name);\r\n    event CandidateAdded(\r\n        uint256 electionId,\r\n        uint256 candidateId,\r\n        string name\r\n    );\r\n    event VoteCast(\r\n        uint256 electionId,\r\n        uint256 candidateId,\r\n        address voter\r\n    );\r\n    \r\n    event VoterRegistered(uint256 electionId, address voter);\r\n    function addCandidate(\r\n        uint256 _electionId,\r\n        string memory _name\r\n    )\r\n    public {\r\n        require(msg.sender == admin, \"Only admin can add candidates\");\r\n        require(\r\n            _electionId > 0 && _electionId <= electionCount,\r\n            \"Invalid election\"\r\n        );\r\n        require(\r\n            !elections[_electionId].started,\r\n            \"Election already started\"\r\n        );\r\n        require(\r\n            !elections[_electionId].ended,\r\n            \"Election already ended\"\r\n        );\r\n        require(bytes(_name).length > 0, \"Candidate name cannot be empty\");\r\n\r\n        uint256 candidateId = candidates[_electionId].length + 1;\r\n\r\n        candidates[_electionId].push(\r\n            Candidate(\r\n                candidateId,\r\n                _name,\r\n                0\r\n            )\r\n        );\r\n\r\n        emit CandidateAdded(\r\n            _electionId,\r\n            candidateId,\r\n            _name\r\n        );\r\n    }\r\n\r\n    function createElection(string memory _name) public {\r\n        require(msg.sender == admin, \"Only admin can create an election\");\r\n        require(bytes(_name).length > 0, \"Election name cannot be empty\");\r\n        electionCount++;\r\n\r\n        elections[electionCount] = Election(\r\n            electionCount,\r\n            _name,\r\n            false,\r\n            false\r\n        );\r\n        emit ElectionCreated(electionCount, _name);\r\n    }\r\n    function registerVoter(uint256 _electionId, address _voter) public {\r\n        require(msg.sender == admin, \"Only admin can register voters\");\r\n\r\n        require(\r\n            _electionId > 0 && _electionId <= electionCount,\r\n            \"Invalid election\"\r\n        );\r\n\r\n        require(\r\n            !elections[_electionId].started,\r\n            \"Election already started\"\r\n        );\r\n\r\n        require(\r\n            _voter != address(0),\r\n            \"Invalid voter address\"\r\n        );\r\n\r\n        require(\r\n            !registeredVoters[_electionId][_voter],\r\n            \"Voter already registered\"\r\n        );\r\n\r\n        registeredVoters[_electionId][_voter] = true;\r\n\r\n        emit VoterRegistered(_electionId, _voter);\r\n    }\r\n    function checkEligibility(\r\n        uint256 _electionId,\r\n        address _voter\r\n    )\r\n    public view returns (bool) {\r\n        return registeredVoters[_electionId][_voter];\r\n    }\r\n    event ElectionStarted(uint256 electionId);\r\n    function startElection(uint256 _electionId) public {\r\n        require(msg.sender == admin, \"Only admin can start election\");\r\n\r\n        require(\r\n            _electionId > 0 && _electionId <= electionCount,\r\n            \"Invalid election\"\r\n        );\r\n\r\n        require(\r\n            !elections[_electionId].started,\r\n            \"Election already started\"\r\n        );\r\n\r\n        require(\r\n            !elections[_electionId].ended,\r\n            \"Election already ended\"\r\n        );\r\n\r\n        require(\r\n            candidates[_electionId].length > 0,\r\n            \"Add at least one candidate\"\r\n        );\r\n\r\n        elections[_electionId].started = true;\r\n\r\n        emit ElectionStarted(_electionId);\r\n    }\r\n    event ElectionEnded(uint256 electionId);\r\n    function endElection(uint256 _electionId) public {\r\n        require(msg.sender == admin, \"Only admin can end election\");\r\n\r\n        require(\r\n            _electionId > 0 && _electionId <= electionCount,\r\n            \"Invalid election\"\r\n        );\r\n\r\n        require(\r\n            elections[_electionId].started,\r\n            \"Election has not started\"\r\n        );\r\n\r\n        require(\r\n            !elections[_electionId].ended,\r\n            \"Election already ended\"\r\n        );\r\n\r\n        elections[_electionId].ended = true;\r\n\r\n        emit ElectionEnded(_electionId);\r\n    }\r\n    function castVote(\r\n        uint256 _electionId,\r\n        uint256 _candidateId\r\n    )\r\n    public {\r\n        require(\r\n            _electionId > 0 && _electionId <= electionCount,\r\n            \"Invalid election\"\r\n        );\r\n\r\n        require(\r\n            elections[_electionId].started,\r\n            \"Election has not started\"\r\n        );\r\n\r\n        require(\r\n            !elections[_electionId].ended,\r\n            \"Election has ended\"\r\n        );\r\n\r\n        require(\r\n            registeredVoters[_electionId][msg.sender],\r\n            \"Voter is not registered\"\r\n        );\r\n\r\n        require(\r\n            !hasVoted[_electionId][msg.sender],\r\n            \"Voter has already voted\"\r\n        );\r\n\r\n        require(\r\n            _candidateId > 0 &&\r\n            _candidateId <= candidates[_electionId].length,\r\n            \"Invalid candidate\"\r\n        );\r\n\r\n        candidates[_electionId][_candidateId - 1].voteCount++;\r\n\r\n        hasVoted[_electionId][msg.sender] = true;\r\n\r\n        emit VoteCast(\r\n            _electionId,\r\n            _candidateId,\r\n            msg.sender\r\n        );\r\n    }\r\n    function getElection(\r\n    uint256 _electionId\r\n) public view returns (\r\n    uint256 id,\r\n    string memory name,\r\n    bool started,\r\n    bool ended\r\n) {\r\n    require(\r\n        _electionId > 0 && _electionId <= electionCount,\r\n        \"Invalid election\"\r\n    );\r\n\r\n    Election memory election = elections[_electionId];\r\n\r\n    return (\r\n        election.id,\r\n        election.name,\r\n        election.started,\r\n        election.ended\r\n    );\r\n}\r\n    function getCandidates(\r\n        uint256 _electionId\r\n    ) public view returns (Candidate[] memory) {\r\n         require(\r\n            _electionId > 0 && _electionId <= electionCount,\r\n            \"Invalid election\"\r\n        );\r\n        return candidates[_electionId];\r\n    }\r\n    function checkHasVoted(\r\n        uint256 _electionId,\r\n        address _voter\r\n    ) public view returns (bool) {\r\n        return hasVoted[_electionId][_voter];\r\n    }\r\n    function getResults(\r\n        uint256 _electionId\r\n    ) public view returns (Candidate[] memory) {\r\n        require(\r\n            _electionId > 0 && _electionId <= electionCount,\r\n            \"Invalid election\"\r\n        );\r\n\r\n        require(\r\n            elections[_electionId].ended,\r\n            \"Election has not ended\"\r\n        );\r\n\r\n        return candidates[_electionId];\r\n    }\r\n}"
+      }
+    }
+  }
+}

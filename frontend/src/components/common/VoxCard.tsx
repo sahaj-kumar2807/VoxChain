@@ -9,12 +9,14 @@ export interface VoxCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const VoxCard = React.forwardRef<HTMLDivElement, VoxCardProps>(
   ({ className, variant = 'layer-2', padding = 'md', children, ...props }, ref) => {
     const variants = {
-      'layer-1': 'bg-vox-surface-1 border border-vox-border-subtle shadow-vox-card',
-      'layer-2': 'bg-vox-surface-2 border border-vox-border-medium shadow-vox-card',
+      'layer-1':
+        'bg-gradient-to-b from-[#111216]/95 to-[#090A0D]/98 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_16px_40px_rgba(0,0,0,0.7)] backdrop-blur-xl',
+      'layer-2':
+        'bg-gradient-to-b from-[#15161C]/95 to-[#0B0C10]/98 border border-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_20px_48px_rgba(0,0,0,0.8)] backdrop-blur-xl',
       interactive:
-        'bg-vox-surface-1 hover:bg-vox-surface-2 border border-vox-border-subtle hover:border-vox-border-medium hover:-translate-y-0.5 transition-all duration-200 cursor-pointer shadow-vox-card',
+        'bg-gradient-to-b from-[#121318]/95 to-[#0A0B0E]/98 border border-white/10 hover:border-white/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_16px_40px_rgba(0,0,0,0.7)] hover:shadow-[0_20px_48px_rgba(255,255,255,0.06)] backdrop-blur-xl',
       active:
-        'bg-vox-surface-2 border border-vox-accent-gold/60 shadow-vox-active ring-1 ring-vox-accent-gold/40',
+        'bg-gradient-to-b from-[#171820]/95 to-[#0E0F14] border border-white/30 shadow-[0_0_24px_rgba(255,255,255,0.08),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-white/20',
     };
 
     const paddings = {

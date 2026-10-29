@@ -2,95 +2,255 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Dark Mode (Primary) */
-  --vox-bg-base: #07090E;
-  --vox-surface-1: #0E131F;
-  --vox-surface-2: #161D2E;
-  --vox-surface-3: #1E273D;
-  --vox-surface-4: #28334E;
+/* ============================================================
+   VOXCHAIN — GLOBAL DESIGN SYSTEM v2.0
+   Obsidian Black · Technical Brutalism · Editorial Typography
+   ============================================================ */
 
-  --vox-border-subtle: rgba(255, 255, 255, 0.08);
-  --vox-border-medium: rgba(255, 255, 255, 0.16);
-  --vox-border-strong: rgba(255, 255, 255, 0.28);
-  --vox-border-active: rgba(245, 158, 11, 0.55);
+@layer base {
+  :root {
+    color-scheme: dark;
 
-  --vox-text-primary: #F8FAFC;
-  --vox-text-secondary: #94A3B8;
-  --vox-text-muted: #64748B;
-  --vox-text-disabled: #334155;
+    /* ── Core Surface Stack (Stitch Obsidian Kinetic Governance) ── */
+    --background:           #07080A;
+    --background-secondary: #0D0E10;
+    --surface:              #121316;
+    --surface-elevated:     #1B1C1E;
+    --surface-card:         #0B0D12;
+    --surface-card-hover:   #12161F;
 
-  --vox-accent-gold: #F59E0B;
-  --vox-accent-gold-hover: #D97706;
-  --vox-accent-gold-glow: rgba(245, 158, 11, 0.15);
+    /* ── Typography (Stitch) ── */
+    --text-primary:   #E3E2E5;
+    --text-secondary: #9B9DA2;
+    --text-muted:     #768297;
+    --text-disabled:  #444954;
 
-  --vox-state-success: #10B981;
-  --vox-state-success-bg: rgba(16, 185, 129, 0.10);
-  --vox-state-warning: #F59E0B;
-  --vox-state-warning-bg: rgba(245, 158, 11, 0.10);
-  --vox-state-danger: #EF4444;
-  --vox-state-danger-bg: rgba(239, 68, 68, 0.10);
-  --vox-state-info: #0EA5E9;
-  --vox-state-info-bg: rgba(14, 165, 233, 0.10);
+    /* ── Borders (Stitch) ── */
+    --border-subtle:  #1C212B;
+    --border-default: #292D33;
+    --border-strong:  #343537;
+    --border-active:  rgba(212, 255, 0, 0.45);
+
+    /* ── Precision Accents (Signal Lime strictly as indicator/accent) ── */
+    --accent:       #C2C6D4;
+    --accent-hover: #FFFFFF;
+    --accent-muted: rgba(194, 198, 212, 0.10);
+    --accent-dim:   rgba(194, 198, 212, 0.05);
+    --signal-lime:  #D4FF00;
+    --signal-lime-glow: rgba(212, 255, 0, 0.25);
+
+    /* ── Metal Palette ── */
+    --metal-void:   #07080A;
+    --metal-dark:   #1B1C1E;
+    --metal-mid:    #768297;
+    --metal-light:  #C2C6D4;
+    --metal-bright: #E3E2E5;
+
+    /* ── Status Palette (restrained; functional only) ── */
+    --status-success:    #6EE7B7;
+    --status-success-bg: rgba(110, 231, 183, 0.08);
+    --status-warning:    #FCD34D;
+    --status-warning-bg: rgba(252, 211, 77, 0.08);
+    --status-danger:     #FCA5A5;
+    --status-danger-bg:  rgba(252, 165, 165, 0.08);
+    --status-info:       #93C5FD;
+    --status-info-bg:    rgba(147, 197, 253, 0.08);
+
+    /* ── Aliases (backward-compat layer) ── */
+    --vox-bg-base:           var(--background);
+    --vox-surface-1:         var(--surface);
+    --vox-surface-2:         var(--surface-elevated);
+    --vox-surface-3:         #202020;
+    --vox-surface-4:         #2A2A2A;
+    --vox-border-subtle:     var(--border-subtle);
+    --vox-border-medium:     var(--border-default);
+    --vox-border-strong:     var(--border-strong);
+    --vox-border-active:     var(--border-active);
+    --vox-text-primary:      var(--text-primary);
+    --vox-text-secondary:    var(--text-secondary);
+    --vox-text-muted:        var(--text-muted);
+    --vox-text-disabled:     var(--text-disabled);
+    --vox-accent-gold:       var(--accent);
+    --vox-accent-gold-hover: var(--accent-hover);
+    --vox-accent-gold-glow:  var(--accent-muted);
+    --vox-state-success:     var(--status-success);
+    --vox-state-success-bg:  var(--status-success-bg);
+    --vox-state-warning:     var(--status-warning);
+    --vox-state-warning-bg:  var(--status-warning-bg);
+    --vox-state-danger:      var(--status-danger);
+    --vox-state-danger-bg:   var(--status-danger-bg);
+    --vox-state-info:        var(--status-info);
+    --vox-state-info-bg:     var(--status-info-bg);
+
+    /* ── Shadows ── */
+    --shadow-ambient: 0 24px 80px rgba(0, 0, 0, 0.55);
+    --shadow-card:    0 4px 24px -4px rgba(0, 0, 0, 0.6);
+    --shadow-modal:   0 24px 60px -12px rgba(0, 0, 0, 0.85);
+  }
 }
 
-[data-theme="light"] {
-  --vox-bg-base: #F8FAFC;
-  --vox-surface-1: #FFFFFF;
-  --vox-surface-2: #F1F5F9;
-  --vox-surface-3: #E2E8F0;
-  --vox-surface-4: #CBD5E1;
-
-  --vox-border-subtle: #E2E8F0;
-  --vox-border-medium: #CBD5E1;
-  --vox-border-strong: #94A3B8;
-  --vox-border-active: #D97706;
-
-  --vox-text-primary: #0F172A;
-  --vox-text-secondary: #334155;
-  --vox-text-muted: #64748B;
-  --vox-text-disabled: #94A3B8;
-
-  --vox-accent-gold: #D97706;
-  --vox-accent-gold-hover: #B45309;
-  --vox-accent-gold-glow: rgba(217, 119, 6, 0.12);
-
-  --vox-state-success: #059669;
-  --vox-state-success-bg: rgba(5, 150, 105, 0.10);
-  --vox-state-warning: #D97706;
-  --vox-state-warning-bg: rgba(217, 119, 6, 0.10);
-  --vox-state-danger: #DC2626;
-  --vox-state-danger-bg: rgba(220, 38, 38, 0.10);
-  --vox-state-info: #0284C7;
-  --vox-state-info-bg: rgba(2, 132, 199, 0.10);
+/* ── Body baseline ── */
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* ── Text selection — monochromatic ── */
+::selection {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--vox-bg-base);
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
 }
 
+/* ── Minimal architectural scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--background); }
 ::-webkit-scrollbar-thumb {
-  background: var(--vox-surface-3);
-  border-radius: 4px;
-  border: 2px solid var(--vox-bg-base);
+  background: var(--surface-elevated);
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--metal-mid); }
+
+/* ── 3D transform utilities ── */
+.perspective-800  { perspective: 800px; }
+.perspective-1000 { perspective: 1000px; }
+.perspective-1400 { perspective: 1400px; }
+.preserve-3d      { transform-style: preserve-3d; }
+.backface-hidden  { backface-visibility: hidden; }
+
+/* ── Hairline borders ── */
+.border-hairline { border-color: var(--border-subtle); }
+.border-hairline-default { border-color: var(--border-default); }
+
+/* ── Architectural texture patterns ── */
+.bg-etched-lines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px,
+    transparent 6px
+  );
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--vox-border-strong);
+.bg-etched-lines-dense {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 1px,
+    transparent 4px
+  );
 }
 
-/* Reduced Motion Protocol */
+.bg-etched-diagonal {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+}
+
+.bg-grid-fine {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ── Shimmer loading animation ── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* ── Status pulse dot ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+.animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* ── Scroll-reveal fade-up ── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-delay-100 { animation-delay: 0.1s; }
+.animate-delay-200 { animation-delay: 0.2s; }
+.animate-delay-300 { animation-delay: 0.3s; }
+.animate-delay-400 { animation-delay: 0.4s; }
+
+/* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ── Smooth scroll ── */
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* ============================================================
+   PRINT MEDIA STYLES — Official Cryptographic Certificate
+   Guarantees 1-page pristine output with sharp typography
+   ============================================================ */
+@media print {
+  @page {
+    size: portrait;
+    margin: 10mm 14mm;
+  }
+
+  html,
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Prevent page cuts and ensure full certificate stays intact */
+  .receipt-certificate {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+    border: 2px solid #059669 !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  .receipt-certificate div {
+    break-inside: avoid !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
   }
 }

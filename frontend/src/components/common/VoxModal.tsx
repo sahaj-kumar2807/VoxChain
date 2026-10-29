@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
@@ -22,6 +23,12 @@ export const VoxModal: React.FC<VoxModalProps> = ({
   maxWidth = 'md',
   showClose = true,
 }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Lock scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -41,17 +48,19 @@ export const VoxModal: React.FC<VoxModalProps> = ({
     xl: 'max-w-2xl',
   };
 
-  return (
+  if (!mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/75 backdrop-blur-md"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md"
             onClick={onClose}
           />
 
@@ -62,22 +71,22 @@ export const VoxModal: React.FC<VoxModalProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'relative w-full bg-vox-surface-1 border border-vox-border-strong rounded-xl shadow-vox-modal overflow-hidden z-10',
+              'relative w-full bg-[#0D0D14] border border-white/15 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.95)] overflow-hidden z-10',
               maxWClasses[maxWidth]
             )}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             {(title || showClose) && (
-              <div className="flex items-start justify-between p-6 pb-4 border-b border-vox-border-subtle">
+              <div className="flex items-start justify-between p-6 pb-4 border-b border-white/10 bg-[#0A0A10]">
                 <div>
-                  {title && <h3 className="font-display font-bold text-xl text-vox-text-primary">{title}</h3>}
-                  {subtitle && <p className="text-sm text-vox-text-secondary mt-1">{subtitle}</p>}
+                  {title && <h3 className="font-display font-bold text-xl text-white">{title}</h3>}
+                  {subtitle && <p className="text-sm text-zinc-400 mt-1">{subtitle}</p>}
                 </div>
                 {showClose && (
                   <button
                     onClick={onClose}
-                    className="text-vox-text-muted hover:text-vox-text-primary p-1.5 rounded-md hover:bg-vox-surface-2 transition-colors cursor-pointer"
+                    className="text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                     aria-label="Close modal"
                   >
                     <X className="w-5 h-5" />
@@ -91,6 +100,7 @@ export const VoxModal: React.FC<VoxModalProps> = ({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

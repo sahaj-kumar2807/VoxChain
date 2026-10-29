@@ -1,10 +1,23 @@
-import { useReadContract, useAccount } from 'wagmi';
+import { useReadContract, useAccount, useChainId } from 'wagmi';
+import { sepolia } from 'wagmi/chains';
 import { VOX_CHAIN_ABI } from '../contracts/voxChainAbi';
-import { DEFAULT_CONTRACT_ADDRESS } from '../contracts/config';
+import { getContractAddress, isSupportedChain } from '../contracts/config';
 import type { Election, Candidate } from '../types';
 
-export function useElection(electionId?: number) {
-  const { address } = useAccount();
+export function useElection(electionId?: number, contractAddressOverride?: `0x${string}`) {
+  const { address, chainId: accountChainId } = useAccount();
+  const defaultChainId = useChainId();
+  const chainId = isSupportedChain(accountChainId)
+    ? accountChainId
+    : isSupportedChain(defaultChainId)
+    ? defaultChainId
+    : sepolia.id;
+  const resolvedAddress = contractAddressOverride || getContractAddress(chainId);
+  const isContractConfigured = Boolean(
+    resolvedAddress &&
+    resolvedAddress !== '0x0000000000000000000000000000000000000000'
+  );
+  const activeContractAddress = isContractConfigured ? resolvedAddress : undefined;
   const validId = typeof electionId === 'number' && electionId > 0;
   const bigId = validId ? BigInt(electionId) : undefined;
 
@@ -15,12 +28,14 @@ export function useElection(electionId?: number) {
     refetch: refetchElection,
     error: electionError,
   } = useReadContract({
-    address: DEFAULT_CONTRACT_ADDRESS,
+    address: activeContractAddress,
     abi: VOX_CHAIN_ABI,
     functionName: 'getElection',
     args: bigId ? [bigId] : undefined,
+    chainId,
     query: {
-      enabled: validId,
+      enabled: Boolean(validId && activeContractAddress),
+      staleTime: 5_000,
     },
   });
 
@@ -31,12 +46,14 @@ export function useElection(electionId?: number) {
     refetch: refetchCandidates,
     error: candidatesError,
   } = useReadContract({
-    address: DEFAULT_CONTRACT_ADDRESS,
+    address: activeContractAddress,
     abi: VOX_CHAIN_ABI,
     functionName: 'getCandidates',
     args: bigId ? [bigId] : undefined,
+    chainId,
     query: {
-      enabled: validId,
+      enabled: Boolean(validId && activeContractAddress),
+      staleTime: 5_000,
     },
   });
 
@@ -46,12 +63,14 @@ export function useElection(electionId?: number) {
     isLoading: isEligibilityLoading,
     refetch: refetchEligibility,
   } = useReadContract({
-    address: DEFAULT_CONTRACT_ADDRESS,
+    address: activeContractAddress,
     abi: VOX_CHAIN_ABI,
     functionName: 'checkEligibility',
     args: bigId && address ? [bigId, address] : undefined,
+    chainId,
     query: {
-      enabled: Boolean(validId && address),
+      enabled: Boolean(validId && address && activeContractAddress),
+      staleTime: 5_000,
     },
   });
 
@@ -61,12 +80,14 @@ export function useElection(electionId?: number) {
     isLoading: isHasVotedLoading,
     refetch: refetchHasVoted,
   } = useReadContract({
-    address: DEFAULT_CONTRACT_ADDRESS,
+    address: activeContractAddress,
     abi: VOX_CHAIN_ABI,
     functionName: 'checkHasVoted',
     args: bigId && address ? [bigId, address] : undefined,
+    chainId,
     query: {
-      enabled: Boolean(validId && address),
+      enabled: Boolean(validId && address && activeContractAddress),
+      staleTime: 5_000,
     },
   });
 
@@ -77,12 +98,14 @@ export function useElection(electionId?: number) {
     isLoading: isResultsLoading,
     refetch: refetchResults,
   } = useReadContract({
-    address: DEFAULT_CONTRACT_ADDRESS,
+    address: activeContractAddress,
     abi: VOX_CHAIN_ABI,
     functionName: 'getResults',
     args: bigId ? [bigId] : undefined,
+    chainId,
     query: {
-      enabled: Boolean(validId && isEnded),
+      enabled: Boolean(validId && isEnded && activeContractAddress),
+      staleTime: 10_000,
     },
   });
 
@@ -109,6 +132,7 @@ export function useElection(electionId?: number) {
   };
 
   return {
+    contractAddress: activeContractAddress,
     election,
     candidates,
     results,

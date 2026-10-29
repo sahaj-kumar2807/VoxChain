@@ -26,6 +26,7 @@ export interface VoteReceipt {
   candidateName: string;
   voterAddress: `0x${string}`;
   transactionHash: `0x${string}`;
+  contractAddress?: `0x${string}`;
   blockNumber?: bigint;
   timestamp: string;
   gasUsed?: bigint;

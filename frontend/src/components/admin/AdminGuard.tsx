@@ -1,68 +1,84 @@
 import React from 'react';
 import { useAccount } from 'wagmi';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useVoxChain } from '../../hooks/useVoxChain';
+import { useVoxChainRegistry } from '../../hooks/useVoxChainRegistry';
 import { VoxCard } from '../common/VoxCard';
 import { VoxButton } from '../common/VoxButton';
 import { VoxHashPill } from '../common/VoxHashPill';
-import { ShieldAlert, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ShieldAlert, Loader2, ArrowLeft } from 'lucide-react';
 
 export interface AdminGuardProps {
   children: React.ReactNode;
 }
 
 export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
-  const { isConnected } = useAccount();
-  const { isUserAdmin, adminAddress, isAdminLoading } = useVoxChain();
+  const [searchParams] = useSearchParams();
+  const contractParam = (searchParams.get('contract') as `0x${string}`) || undefined;
+  const { isConnected, address } = useAccount();
+  const { isUserAdmin, adminAddress, isAdminLoading } = useVoxChain(contractParam);
+  const {
+    isOrgAdmin,
+    isSuperAdmin,
+    adminOrganisations,
+    isLoading: isRegistryLoading,
+  } = useVoxChainRegistry();
 
-  if (isAdminLoading) {
+  if (isAdminLoading || isRegistryLoading) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-vox-accent-gold" />
-
-        <span className="font-mono text-xs text-vox-text-muted">
+        <Loader2 className="w-8 h-8 animate-spin text-[#818CF8]" />
+        <span className="font-mono text-xs text-zinc-400">
           Verifying Governance Credentials...
         </span>
       </div>
     );
   }
 
-  if (!isConnected || !isUserAdmin) {
+  // If a specific contract is requested, verify authority for that specific contract
+  const isAuthorizedForTargetContract = contractParam
+    ? isSuperAdmin ||
+      isUserAdmin ||
+      adminOrganisations.some(
+        (o) => o.contractAddress.toLowerCase() === contractParam.toLowerCase()
+      )
+    : isUserAdmin || isOrgAdmin || isSuperAdmin;
+
+  if (!isConnected || !isAuthorizedForTargetContract) {
     return (
       <div className="max-w-xl mx-auto py-16 px-4">
         <VoxCard
           variant="layer-1"
           padding="lg"
-          className="border-vox-state-danger/40 text-center"
+          className="border-rose-500/30 text-center bg-[#0C0C12]"
         >
-          <div className="w-14 h-14 mx-auto rounded-full bg-vox-state-danger-bg border border-vox-state-danger/40 flex items-center justify-center text-vox-state-danger mb-4">
+          <div className="w-14 h-14 mx-auto rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
             <ShieldAlert className="w-7 h-7" />
           </div>
 
-          <h2 className="font-display font-bold text-2xl text-vox-text-primary mb-2">
+          <h2 className="font-display font-bold text-2xl text-white mb-2">
             Governance Authority Required
           </h2>
 
-          <p className="text-xs text-vox-text-secondary leading-relaxed mb-6">
-            This administrative portal requires cryptographic authorization
-            from the smart contract deployer. Only the official governance
-            account can manage elections and voter registries.
+          <p className="text-xs text-zinc-400 leading-relaxed mb-6">
+            {contractParam
+              ? 'Your connected wallet does not hold administrator authority for this specific organisation contract. Multi-organisation governance restricts administrative actions to the assigned administrator.'
+              : 'This administrative portal requires cryptographic authorization as an assigned Organisation Administrator or platform Super Admin.'}
           </p>
 
-          <div className="p-4 bg-vox-surface-2 rounded-xl border border-vox-border-subtle text-xs mb-6 text-left">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-vox-text-muted block mb-1">
-              Required Administrator Address:
+          <div className="p-4 bg-[#14141E] rounded-xl border border-white/10 text-xs mb-6 text-left">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500 block mb-1.5">
+              {contractParam ? 'Designated Organisation Administrator:' : 'Election Contract Administrator:'}
             </span>
 
             {adminAddress ? (
               <VoxHashPill
                 hash={adminAddress}
                 type="address"
-                truncate={false}
-                className="w-full justify-between"
+                truncate={true}
               />
             ) : (
-              <span className="font-mono text-vox-text-muted">
+              <span className="font-mono text-zinc-500">
                 Loading admin address...
               </span>
             )}
@@ -70,7 +86,7 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
 
           <div className="flex justify-center gap-3">
             <Link to="/dashboard">
-              <VoxButton variant="outline">
+              <VoxButton variant="outline" icon={<ArrowLeft className="w-3.5 h-3.5" />}>
                 Return to Voter Portal
               </VoxButton>
             </Link>

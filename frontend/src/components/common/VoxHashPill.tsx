@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn';
 import { truncateAddress, truncateHash } from '../../utils/formatters';
 import { Copy, Check, ExternalLink } from 'lucide-react';
 import { getExplorerTxUrl, getExplorerAddressUrl } from '../../contracts/config';
-import { useChainId } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 
 export interface VoxHashPillProps extends React.HTMLAttributes<HTMLDivElement> {
   hash: string;
@@ -23,7 +23,9 @@ export const VoxHashPill: React.FC<VoxHashPillProps> = ({
   ...props
 }) => {
   const [copied, setCopied] = useState(false);
-  const chainId = useChainId();
+  const { chainId: accountChainId } = useAccount();
+  const defaultChainId = useChainId();
+  const chainId = accountChainId || defaultChainId;
 
   const displayText = truncate
     ? type === 'address'
@@ -52,36 +54,42 @@ export const VoxHashPill: React.FC<VoxHashPillProps> = ({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 bg-vox-surface-2 hover:bg-vox-surface-3 border border-vox-border-subtle hover:border-vox-border-medium rounded-md font-mono text-xs text-vox-text-primary transition-colors',
+        'inline-flex items-center gap-2 px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] border border-white/15 hover:border-[#818CF8]/50 rounded-lg font-mono text-xs text-white transition-all shadow-sm max-w-full',
         className
       )}
       {...props}
     >
-      <span className="select-all">{displayText}</span>
+      <span className="select-all truncate min-w-0 font-mono tracking-tight" title={hash}>
+        {displayText}
+      </span>
 
-      {showCopy && (
-        <button
-          type="button"
-          onClick={handleCopy}
-          aria-label="Copy hash"
-          className="text-vox-text-muted hover:text-vox-accent-gold p-0.5 rounded transition-colors"
-          title={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
-        >
-          {copied ? <Check className="w-3.5 h-3.5 text-vox-state-success" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
-      )}
+      {(showCopy || (showExplorerLink && explorerUrl)) && (
+        <div className="flex items-center gap-0.5 shrink-0 ml-auto pl-1 print:hidden">
+          {showCopy && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label="Copy hash"
+              className="text-zinc-400 hover:text-white p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+              title={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          )}
 
-      {showExplorerLink && explorerUrl && (
-        <a
-          href={explorerUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-vox-text-muted hover:text-vox-accent-gold p-0.5 rounded transition-colors"
-          title="View on Explorer"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+          {showExplorerLink && explorerUrl && (
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-400 hover:text-[#818CF8] p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+              title="View on Explorer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
       )}
     </div>
   );

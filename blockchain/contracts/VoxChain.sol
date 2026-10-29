@@ -4,6 +4,9 @@ pragma solidity ^0.8.28;
 contract VoxChain {
 
     address public admin;
+    address public registry;
+    uint256 public orgId;
+    string public orgName;
 
     struct Election {
         uint256 id;
@@ -28,9 +31,6 @@ contract VoxChain {
 
     mapping(uint256 => mapping(address => bool)) public hasVoted;
 
-    constructor() {
-        admin = msg.sender;
-    }
     event ElectionCreated(uint256 electionId, string name);
     event CandidateAdded(
         uint256 electionId,
@@ -44,6 +44,33 @@ contract VoxChain {
     );
     
     event VoterRegistered(uint256 electionId, address voter);
+    event ElectionStarted(uint256 electionId);
+    event ElectionEnded(uint256 electionId);
+    event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
+
+    modifier onlyRegistry() {
+        require(msg.sender == registry, "Only registry can update admin");
+        _;
+    }
+
+    constructor(
+        address _admin,
+        address _registry,
+        uint256 _orgId,
+        string memory _orgName
+    ) {
+        admin = _admin;
+        registry = _registry;
+        orgId = _orgId;
+        orgName = _orgName;
+    }
+
+    function setAdmin(address _newAdmin) external onlyRegistry {
+        address previousAdmin = admin;
+        admin = _newAdmin;
+        emit AdminChanged(previousAdmin, _newAdmin);
+    }
+
     function addCandidate(
         uint256 _electionId,
         string memory _name
@@ -94,6 +121,7 @@ contract VoxChain {
         );
         emit ElectionCreated(electionCount, _name);
     }
+
     function registerVoter(uint256 _electionId, address _voter) public {
         require(msg.sender == admin, "Only admin can register voters");
 
@@ -121,6 +149,7 @@ contract VoxChain {
 
         emit VoterRegistered(_electionId, _voter);
     }
+
     function checkEligibility(
         uint256 _electionId,
         address _voter
@@ -128,7 +157,7 @@ contract VoxChain {
     public view returns (bool) {
         return registeredVoters[_electionId][_voter];
     }
-    event ElectionStarted(uint256 electionId);
+
     function startElection(uint256 _electionId) public {
         require(msg.sender == admin, "Only admin can start election");
 
@@ -156,7 +185,7 @@ contract VoxChain {
 
         emit ElectionStarted(_electionId);
     }
-    event ElectionEnded(uint256 electionId);
+
     function endElection(uint256 _electionId) public {
         require(msg.sender == admin, "Only admin can end election");
 
@@ -179,6 +208,7 @@ contract VoxChain {
 
         emit ElectionEnded(_electionId);
     }
+
     function castVote(
         uint256 _electionId,
         uint256 _candidateId
@@ -225,43 +255,47 @@ contract VoxChain {
             msg.sender
         );
     }
+
     function getElection(
-    uint256 _electionId
-) public view returns (
-    uint256 id,
-    string memory name,
-    bool started,
-    bool ended
-) {
-    require(
-        _electionId > 0 && _electionId <= electionCount,
-        "Invalid election"
-    );
+        uint256 _electionId
+    ) public view returns (
+        uint256 id,
+        string memory name,
+        bool started,
+        bool ended
+    ) {
+        require(
+            _electionId > 0 && _electionId <= electionCount,
+            "Invalid election"
+        );
 
-    Election memory election = elections[_electionId];
+        Election memory election = elections[_electionId];
 
-    return (
-        election.id,
-        election.name,
-        election.started,
-        election.ended
-    );
-}
+        return (
+            election.id,
+            election.name,
+            election.started,
+            election.ended
+        );
+    }
+
     function getCandidates(
         uint256 _electionId
     ) public view returns (Candidate[] memory) {
-         require(
+        require(
             _electionId > 0 && _electionId <= electionCount,
             "Invalid election"
         );
         return candidates[_electionId];
     }
+
     function checkHasVoted(
         uint256 _electionId,
         address _voter
     ) public view returns (bool) {
         return hasVoted[_electionId][_voter];
     }
+
     function getResults(
         uint256 _electionId
     ) public view returns (Candidate[] memory) {
