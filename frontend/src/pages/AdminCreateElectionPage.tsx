@@ -9,7 +9,7 @@ import { VoxCard } from '../components/common/VoxCard';
 import { VoxInput } from '../components/common/VoxInput';
 import { VoxButton } from '../components/common/VoxButton';
 import { VoxAlert } from '../components/common/VoxAlert';
-import { PlusCircle, ArrowLeft, Loader2, CheckCircle2, ShieldAlert, ExternalLink } from 'lucide-react';
+import { PlusCircle, ArrowLeft, ShieldAlert, Scale, CheckCircle2 } from 'lucide-react';
 import { parseContractError } from '../hooks/useVoxChainRegistry';
 
 export const AdminCreateElectionPage: React.FC = () => {
@@ -28,7 +28,13 @@ export const AdminCreateElectionPage: React.FC = () => {
     isAdminLoading,
     orgName,
   } = useVoxChain(contractParam);
-  const [electionName, setElectionName] = useState('');
+
+  // Safely parse initial election name, stripping any query string leakage
+  const rawName = searchParams.get('name') || '';
+  const initialName = rawName.split(/\?|&/)[0].trim();
+  const isRunoff = Boolean(initialName.toLowerCase().includes('runoff'));
+
+  const [electionName, setElectionName] = useState(initialName);
   const [isDeploying, setIsDeploying] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,58 +96,51 @@ export const AdminCreateElectionPage: React.FC = () => {
   return (
     <AdminGuard>
       <div className="max-w-xl mx-auto py-8 flex flex-col gap-6">
-        <Link to={returnUrl} className="flex items-center gap-1.5 text-xs font-mono text-vox-text-muted hover:text-white transition-colors">
+        <Link
+          to={returnUrl}
+          className="flex items-center gap-1.5 text-xs font-mono text-zinc-400 hover:text-white transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" /> Back to Admin Dashboard
         </Link>
 
-        <VoxCard variant="layer-1" padding="lg">
-          <div className="flex items-center gap-2 mb-2">
-            <PlusCircle className="w-5 h-5 text-[#D8D8D8]" />
-            <span className="font-mono text-xs font-semibold text-[#D8D8D8] uppercase tracking-wider">
-              New Election
-            </span>
+        <VoxCard
+          variant="layer-1"
+          padding="lg"
+          className={isRunoff ? 'border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.06)]' : ''}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2 mb-3">
+            {isRunoff ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <Scale className="w-3.5 h-3.5" />
+                <span>TIE-BREAKER RUNOFF</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-white/[0.06] text-zinc-300 border border-white/10">
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>NEW ELECTION</span>
+              </span>
+            )}
           </div>
 
-          <h1 className="font-display font-bold text-2xl text-vox-text-primary mb-2">
-            Create New Election
+          <h1 className="font-display font-bold text-2xl sm:text-3xl text-white mb-2 tracking-tight">
+            {isRunoff ? 'Schedule Runoff Election' : 'Create New Election'}
           </h1>
-          <p className="text-xs text-vox-text-secondary mb-6 leading-relaxed">
-            Set up an election. Once created, you can add candidates and invite authorized voters.
+          <p className="text-xs font-mono text-zinc-400 mb-6 leading-relaxed">
+            {isRunoff
+              ? 'A tie occurred in the certified tally. Create this runoff ballot to determine the definitive winner.'
+              : 'Set up an election on-chain. Once created, you can register candidates and authorize voter addresses.'}
           </p>
 
           {!isAdminLoading && adminAddress && !isUserAdmin && (
             <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-              <div className="flex items-center gap-2 mb-2 text-amber-400 font-semibold text-sm">
+              <div className="flex items-center gap-2 mb-1.5 text-amber-400 font-semibold text-xs font-mono">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>Administrator Account Required</span>
+                <span>Spectator Mode · Admin Account Required</span>
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed mb-3">
-                You are currently viewing this election workspace in spectator mode. Only the designated administrator can create new elections.
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Only the contract administrator ({adminAddress.slice(0, 6)}...{adminAddress.slice(-4)}) can create elections. Please switch to the designated admin account in your wallet.
               </p>
-              <div className="pt-2.5 border-t border-amber-500/20 text-xs text-zinc-300 space-y-1">
-                <div className="font-semibold text-white">How to proceed:</div>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>
-                    Switch to the administrator account in your wallet.
-                  </li>
-                  {isSuperAdmin && (
-                    <li>
-                      Or visit the{' '}
-                      <Link to="/super-admin" className="underline text-indigo-400 hover:text-indigo-300">
-                        Super Admin portal
-                      </Link>{' '}
-                      to assign yourself as administrator for this organisation.
-                    </li>
-                  )}
-                  <li>
-                    Or return to the{' '}
-                    <Link to="/admin" className="underline text-indigo-400 hover:text-indigo-300">
-                      Admin Dashboard
-                    </Link>{' '}
-                    and choose your primary platform workspace.
-                  </li>
-                </ul>
-              </div>
             </div>
           )}
 
@@ -159,32 +158,27 @@ export const AdminCreateElectionPage: React.FC = () => {
 
           {success && (
             <VoxAlert variant="success" title="Election Created Successfully" className="mb-4">
-              Election created! Redirecting to dashboard...
+              Election initialized on-chain! Returning to dashboard...
             </VoxAlert>
           )}
 
-          <form onSubmit={handleCreate} className="flex flex-col gap-5">
-            <VoxInput
-              label="Election Title"
-              placeholder="e.g. 2026 Student Council Election"
-              value={electionName}
-              onChange={(e) => setElectionName(e.target.value)}
-              disabled={isDeploying || success || (!isAdminLoading && !isUserAdmin && Boolean(adminAddress))}
-              hint="Enter the official title for this election."
-            />
+          <form onSubmit={handleCreate} className="flex flex-col gap-6">
+            <div>
+              <VoxInput
+                label="Election Title"
+                placeholder="e.g. Annual Community Leadership Election (Runoff)"
+                value={electionName}
+                onChange={(e) => setElectionName(e.target.value)}
+                disabled={isDeploying || success || (!isAdminLoading && !isUserAdmin && Boolean(adminAddress))}
+                hint={
+                  isRunoff
+                    ? 'Review or adjust the runoff title before broadcasting.'
+                    : 'Enter the official title for this election.'
+                }
+              />
+            </div>
 
-            {/* Live Ballot Card Preview */}
-            {electionName && (
-              <div className="p-4 bg-vox-surface-2 rounded-xl border border-vox-border-subtle">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-vox-text-muted block mb-1">
-                  Preview:
-                </span>
-                <h4 className="font-display font-bold text-base text-vox-text-primary">{electionName}</h4>
-                <span className="text-xs font-mono text-[#D8D8D8]">Status: Draft</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-vox-border-subtle">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
               <Link to={returnUrl}>
                 <VoxButton variant="outline" type="button" disabled={isDeploying || success}>
                   Cancel
@@ -194,11 +188,14 @@ export const AdminCreateElectionPage: React.FC = () => {
                 variant="primary"
                 type="submit"
                 isLoading={isDeploying}
-                loadingText="Creating election..."
+                loadingText="Deploying..."
                 disabled={!electionName.trim() || success || (!isAdminLoading && !isUserAdmin && Boolean(adminAddress))}
+                className={isRunoff ? 'bg-amber-400 hover:bg-amber-300 text-black border-amber-400 font-bold' : ''}
               >
                 {!isAdminLoading && !isUserAdmin && Boolean(adminAddress)
                   ? 'Admin Wallet Required'
+                  : isRunoff
+                  ? 'Launch Runoff Ballot →'
                   : 'Create Election →'}
               </VoxButton>
             </div>

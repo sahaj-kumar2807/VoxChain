@@ -22,14 +22,16 @@ import {
   Layers,
   ShieldAlert,
   AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { Organisation } from '../types/registry';
+import { computeElectionOutcome, buildReElectionUrl } from '../utils/electionUtils';
 
 const AdminElectionRow: React.FC<{ electionId: number; contractAddress?: `0x${string}` }> = ({
   electionId,
   contractAddress,
 }) => {
-  const { election, candidates, isLoading } = useElection(electionId, contractAddress);
+  const { election, candidates, results, isLoading } = useElection(electionId, contractAddress);
 
   if (isLoading || !election) {
     return (
@@ -48,6 +50,9 @@ const AdminElectionRow: React.FC<{ electionId: number; contractAddress?: `0x${st
   const isPending = !election.started && !election.ended;
   const contractQuery = contractAddress ? `?contract=${contractAddress}` : '';
 
+  const outcome = computeElectionOutcome(results);
+  const isDraw = isEnded && outcome.isDraw;
+
   return (
     <tr className="border-b border-white/[0.06] hover:bg-[#171717] transition-colors">
       <td className="p-4 font-mono font-bold text-[11px] text-[#D8D8D8]">
@@ -57,7 +62,8 @@ const AdminElectionRow: React.FC<{ electionId: number; contractAddress?: `0x${st
       <td className="p-4 font-mono text-[11px] text-[#A3A3A3]">{candidates.length} Candidates</td>
       <td className="p-4">
         {isStarted && <VoxBadge variant="success" dot={true}>Active</VoxBadge>}
-        {isEnded && <VoxBadge variant="neutral">Ended</VoxBadge>}
+        {isDraw && <VoxBadge variant="warning" dot={true}>Draw (Re-election)</VoxBadge>}
+        {isEnded && !isDraw && <VoxBadge variant="neutral">Ended</VoxBadge>}
         {isPending && <VoxBadge variant="neutral">Draft</VoxBadge>}
       </td>
       <td className="p-4">
@@ -82,11 +88,25 @@ const AdminElectionRow: React.FC<{ electionId: number; contractAddress?: `0x${st
             </VoxButton>
           </Link>
           {isEnded && (
-            <Link to={`/election/${electionId}/results${contractQuery}`}>
-              <VoxButton variant="outline" size="sm" icon={<Trophy className="w-3.5 h-3.5" />}>
-                Results
-              </VoxButton>
-            </Link>
+            <>
+              <Link to={`/election/${electionId}/results${contractQuery}`}>
+                <VoxButton variant="outline" size="sm" icon={<Trophy className="w-3.5 h-3.5" />}>
+                  Results
+                </VoxButton>
+              </Link>
+              {isDraw && (
+                <Link to={buildReElectionUrl(election.name, contractAddress)}>
+                  <VoxButton
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+                    icon={<RefreshCw className="w-3.5 h-3.5 text-amber-400" />}
+                  >
+                    Re-election
+                  </VoxButton>
+                </Link>
+              )}
+            </>
           )}
         </div>
       </td>

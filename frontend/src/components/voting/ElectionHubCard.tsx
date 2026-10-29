@@ -4,8 +4,9 @@ import { useAccount } from 'wagmi';
 import { useElection } from '../../hooks/useElection';
 import { VoxBadge } from '../common/VoxBadge';
 import { VoxButton } from '../common/VoxButton';
-import { Vote, Trophy, Lock, CheckCircle2, ArrowRight, Users, ShieldCheck, Sparkles } from 'lucide-react';
+import { Vote, Trophy, Lock, CheckCircle2, ArrowRight, Users, ShieldCheck, Sparkles, Scale } from 'lucide-react';
 import type { ElectionFilter } from '../../types';
+import { computeElectionOutcome } from '../../utils/electionUtils';
 
 export interface ElectionHubCardProps {
   electionId: number;
@@ -19,7 +20,7 @@ export const ElectionHubCard: React.FC<ElectionHubCardProps> = ({
   contractAddress,
 }) => {
   const { isConnected } = useAccount();
-  const { election, candidates, isEligible, hasVoted, isLoading } = useElection(
+  const { election, candidates, results, isEligible, hasVoted, isLoading } = useElection(
     electionId,
     contractAddress
   );
@@ -38,6 +39,9 @@ export const ElectionHubCard: React.FC<ElectionHubCardProps> = ({
   const isStarted = election.started && !election.ended;
   const isEnded = election.ended;
   const isPending = !election.started && !election.ended;
+
+  const outcome = computeElectionOutcome(results);
+  const isDraw = isEnded && outcome.isDraw;
 
   if (filter === 'active' && !isStarted) return null;
   if (filter === 'upcoming' && !isPending) return null;
@@ -64,7 +68,13 @@ export const ElectionHubCard: React.FC<ElectionHubCardProps> = ({
               Voting Open
             </VoxBadge>
           )}
-          {isEnded && (
+          {isDraw && (
+            <VoxBadge variant="warning" dot={true} className="flex items-center gap-1">
+              <Scale className="w-3 h-3 text-amber-400" />
+              <span>Draw · Re-election</span>
+            </VoxBadge>
+          )}
+          {isEnded && !isDraw && (
             <VoxBadge variant="gold" dot={false} className="flex items-center gap-1">
               <Trophy className="w-3 h-3 text-[#A5B4FC]" />
               <span>Concluded</span>
@@ -124,12 +134,24 @@ export const ElectionHubCard: React.FC<ElectionHubCardProps> = ({
             <span>
               {isStarted
                 ? 'Voting is Live'
+                : isDraw
+                ? 'Deadlock: Re-election Required'
                 : isEnded
                 ? 'Official Results Certified'
                 : 'Not Started Yet'}
             </span>
-            <span className={isStarted ? 'text-emerald-400 font-semibold' : isEnded ? 'text-[#A5B4FC] font-semibold' : 'text-zinc-500'}>
-              {isStarted ? 'Active' : isEnded ? 'Finalized' : 'Upcoming'}
+            <span
+              className={
+                isStarted
+                  ? 'text-emerald-400 font-semibold'
+                  : isDraw
+                  ? 'text-amber-400 font-semibold'
+                  : isEnded
+                  ? 'text-[#A5B4FC] font-semibold'
+                  : 'text-zinc-500'
+              }
+            >
+              {isStarted ? 'Active' : isDraw ? 'Draw' : isEnded ? 'Finalized' : 'Upcoming'}
             </span>
           </div>
         </div>
@@ -145,10 +167,20 @@ export const ElectionHubCard: React.FC<ElectionHubCardProps> = ({
                 <VoxButton
                   variant="outline"
                   size="md"
-                  className="w-full border-white/20 bg-white/[0.04] hover:bg-[#6366F1]/15 text-white hover:border-[#818CF8] shadow-sm"
-                  icon={<Trophy className="w-4 h-4 text-[#818CF8]" />}
+                  className={
+                    isDraw
+                      ? 'w-full border-amber-500/40 bg-amber-500/[0.06] hover:bg-amber-500/15 text-amber-200 hover:border-amber-400 shadow-sm'
+                      : 'w-full border-white/20 bg-white/[0.04] hover:bg-[#6366F1]/15 text-white hover:border-[#818CF8] shadow-sm'
+                  }
+                  icon={
+                    isDraw ? (
+                      <Scale className="w-4 h-4 text-amber-400" />
+                    ) : (
+                      <Trophy className="w-4 h-4 text-[#818CF8]" />
+                    )
+                  }
                 >
-                  View Certified Results
+                  {isDraw ? 'View Draw Results' : 'View Certified Results'}
                 </VoxButton>
               </Link>
             ) : hasVoted ? (

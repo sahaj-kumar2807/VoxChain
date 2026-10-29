@@ -7,7 +7,8 @@ import { VoxCard } from '../components/common/VoxCard';
 import { VoxBadge } from '../components/common/VoxBadge';
 import { VoxButton } from '../components/common/VoxButton';
 import { VoxAlert } from '../components/common/VoxAlert';
-import { Trophy, CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, User } from 'lucide-react';
+import { Trophy, CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, User, Scale } from 'lucide-react';
+import { computeElectionOutcome } from '../utils/electionUtils';
 
 export const ElectionDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,7 +17,7 @@ export const ElectionDetailsPage: React.FC = () => {
   const electionId = Number(id);
   const { isConnected, address } = useAccount();
   const { contractAddress } = useVoxChain(contractParam);
-  const { election, candidates, isEligible, hasVoted, isLoading } = useElection(electionId, contractParam);
+  const { election, candidates, results, isEligible, hasVoted, isLoading } = useElection(electionId, contractParam);
 
   if (isLoading || !election) {
     return (
@@ -30,6 +31,9 @@ export const ElectionDetailsPage: React.FC = () => {
   const isStarted = election.started && !election.ended;
   const isEnded = election.ended;
   const isPending = !election.started && !election.ended;
+
+  const outcome = computeElectionOutcome(results);
+  const isDraw = isEnded && outcome.isDraw;
 
   return (
     <div className="flex flex-col gap-10 py-6 max-w-5xl mx-auto">
@@ -50,7 +54,8 @@ export const ElectionDetailsPage: React.FC = () => {
               BALLOT #{electionId.toString().padStart(2, '0')}
             </span>
             {isStarted && <VoxBadge variant="success" dot={true}>Voting Open</VoxBadge>}
-            {isEnded && <VoxBadge variant="gold">Concluded</VoxBadge>}
+            {isDraw && <VoxBadge variant="warning" dot={true}>Draw · Re-election Required</VoxBadge>}
+            {isEnded && !isDraw && <VoxBadge variant="gold">Concluded</VoxBadge>}
             {isPending && <VoxBadge variant="neutral">Upcoming</VoxBadge>}
           </div>
           <h1 className="font-display font-medium text-3xl sm:text-4xl text-[#F4F4F4] mb-2 tracking-tight">
@@ -65,8 +70,12 @@ export const ElectionDetailsPage: React.FC = () => {
         <div>
           {isEnded ? (
             <Link to={`/election/${electionId}/results${contractParam ? `?contract=${contractParam}` : ''}`}>
-              <VoxButton variant="primary" icon={<Trophy className="w-4 h-4" />}>
-                View Certified Results
+              <VoxButton
+                variant={isDraw ? 'primary' : 'primary'}
+                className={isDraw ? 'bg-amber-400 hover:bg-amber-300 text-black border-amber-400 font-bold' : ''}
+                icon={isDraw ? <Scale className="w-4 h-4 text-black" /> : <Trophy className="w-4 h-4" />}
+              >
+                {isDraw ? 'View Draw Results' : 'View Certified Results'}
               </VoxButton>
             </Link>
           ) : hasVoted ? (
@@ -87,6 +96,21 @@ export const ElectionDetailsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Draw Notice Alert */}
+      {isDraw && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs font-mono text-amber-200">
+          <Scale className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <strong className="text-white block font-sans text-sm mb-0.5">Election Result: DRAW (Deadlock)</strong>
+            This election concluded in a tie for 1st place with {outcome.topVoteCount} votes each between{' '}
+            <span className="text-white font-semibold">
+              {outcome.topCandidates.map((c) => c.name).join(' & ')}
+            </span>
+            . To maintain electoral integrity, no single candidate is declared winner. A re-election must be held.
+          </div>
+        </div>
+      )}
 
       {/* Grid: 2-Column Split */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

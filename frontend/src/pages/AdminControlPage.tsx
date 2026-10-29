@@ -22,8 +22,11 @@ import {
   Loader2,
   Lock,
   ShieldAlert,
+  Scale,
+  RefreshCw,
 } from 'lucide-react';
 import { parseContractError } from '../hooks/useVoxChainRegistry';
+import { computeElectionOutcome, buildReElectionUrl } from '../utils/electionUtils';
 
 export const AdminControlPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -40,7 +43,7 @@ export const AdminControlPage: React.FC = () => {
     isUserAdmin,
     isAdminLoading,
   } = useVoxChain(contractParam);
-  const { election, candidates, isLoading, refetchAll } = useElection(electionId, contractParam);
+  const { election, candidates, results, isLoading, refetchAll } = useElection(electionId, contractParam);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +64,10 @@ export const AdminControlPage: React.FC = () => {
   const isEnded = election.ended;
   const hasCandidates = candidates.length > 0;
   const contractQuery = contractParam ? `?contract=${contractParam}` : '';
+
+  const outcome = computeElectionOutcome(results);
+  const isDraw = isEnded && outcome.isDraw;
+  const reElectionUrl = buildReElectionUrl(election.name, contractAddress);
 
   const handleStartElection = async () => {
     if (!hasCandidates || isProcessing) {
@@ -484,17 +491,41 @@ export const AdminControlPage: React.FC = () => {
             </div>
 
             {/* Phase 2 Action / Status */}
-            <div>
+            <div className="flex flex-col gap-3">
               {isEnded ? (
-                <Link to={`/election/${electionId}/results${contractQuery}`} className="w-full block">
-                  <VoxButton
-                    variant="primary"
-                    className="w-full"
-                    icon={<Trophy className="w-4 h-4 text-black" />}
-                  >
-                    View Certified Results
-                  </VoxButton>
-                </Link>
+                <>
+                  {isDraw && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs font-mono text-amber-300">
+                      <Scale className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="leading-relaxed">
+                        <strong className="text-white block font-sans">ELECTION ENDED IN A DRAW</strong>
+                        Top contenders received equal votes. Under democratic protocol rules, a runoff re-election must be conducted.
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <Link to={`/election/${electionId}/results${contractQuery}`} className="w-full flex-1">
+                      <VoxButton
+                        variant={isDraw ? 'outline' : 'primary'}
+                        className="w-full"
+                        icon={<Trophy className="w-4 h-4" />}
+                      >
+                        {isDraw ? 'View Draw Results' : 'View Certified Results'}
+                      </VoxButton>
+                    </Link>
+                    {isDraw && (
+                      <Link to={reElectionUrl} className="w-full sm:w-auto">
+                        <VoxButton
+                          variant="primary"
+                          className="w-full sm:w-auto bg-amber-400 hover:bg-amber-300 text-black border-amber-400 font-bold"
+                          icon={<RefreshCw className="w-4 h-4 text-black" />}
+                        >
+                          Schedule Re-election
+                        </VoxButton>
+                      </Link>
+                    )}
+                  </div>
+                </>
               ) : isStarted ? (
                 <VoxButton
                   variant="danger"
