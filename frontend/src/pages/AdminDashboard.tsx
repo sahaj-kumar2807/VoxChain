@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   AlertTriangle,
   RefreshCw,
+  UserCheck,
 } from 'lucide-react';
 import { Organisation } from '../types/registry';
 import { computeElectionOutcome, buildReElectionUrl } from '../utils/electionUtils';
@@ -281,15 +282,27 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
           </div>
-          <Link to={createElectionUrl}>
-            <VoxButton
-              variant="primary"
-              size="lg"
-              icon={<PlusCircle className="w-4 h-4" />}
-            >
-              Create New Election
-            </VoxButton>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/approve-voters">
+              <VoxButton
+                variant="outline"
+                size="lg"
+                icon={<UserCheck className="w-4 h-4 text-emerald-400" />}
+              >
+                Approve Voters
+              </VoxButton>
+            </Link>
+
+            <Link to={createElectionUrl}>
+              <VoxButton
+                variant="primary"
+                size="lg"
+                icon={<PlusCircle className="w-4 h-4" />}
+              >
+                Create New Election
+              </VoxButton>
+            </Link>
+          </div>
         </div>
 
         {/* Elections table */}

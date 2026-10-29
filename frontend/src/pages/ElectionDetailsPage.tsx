@@ -188,6 +188,19 @@ export const ElectionDetailsPage: React.FC = () => {
                     <span className="text-[#727272] font-mono">Not Voted Yet</span>
                   )}
                 </div>
+
+                {!isEligible && !election.ended && (
+                  <div className="mt-2 pt-3 border-t border-white/10 flex flex-col gap-2">
+                    <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                      Your wallet is not authorized for this ballot. Submit an application to have your address whitelisted.
+                    </p>
+                    <Link to={`/request-voter?election=${electionId}${contractParam ? `&contract=${contractParam}` : ''}`}>
+                      <VoxButton variant="primary-gold" size="sm" className="w-full justify-center">
+                        Raise Request to Become a Voter →
+                      </VoxButton>
+                    </Link>
+                  </div>
+                )}
               </div>
             ) : (
               <VoxAlert variant="info" title="Wallet Not Connected">

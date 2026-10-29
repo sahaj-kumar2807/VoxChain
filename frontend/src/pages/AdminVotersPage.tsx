@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useElection } from '../hooks/useElection';
 import { useVoxChain } from '../hooks/useVoxChain';
@@ -9,12 +9,20 @@ import { VoxInput } from '../components/common/VoxInput';
 import { VoxButton } from '../components/common/VoxButton';
 import { VoxBadge } from '../components/common/VoxBadge';
 import { VoxAlert } from '../components/common/VoxAlert';
-import { ArrowLeft, UserCheck, Search, Loader2, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
+import { VoxHashPill } from '../components/common/VoxHashPill';
+import { ArrowLeft, UserCheck, Search, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Check, X, Clock, ExternalLink } from 'lucide-react';
 import { isAddress } from 'viem';
 import { useReadContract, usePublicClient, useAccount, useChainId } from 'wagmi';
 import { sepolia } from 'wagmi/chains';
 import { isSupportedChain } from '../contracts/config';
 import { parseContractError } from '../hooks/useVoxChainRegistry';
+import {
+  getVoterRequests,
+  approveVoterRequest,
+  rejectVoterRequest,
+  subscribeVoterRequests,
+} from '../utils/voterRequestsStorage';
+import { VoterRegistrationRequest, VoterRequestStatus } from '../types/voterRequest';
 
 export const AdminVotersPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +74,57 @@ export const AdminVotersPage: React.FC = () => {
       staleTime: 5_000,
     },
   });
+
+  // Voter requests for this election
+  const [allRequests, setAllRequests] = useState<VoterRegistrationRequest[]>([]);
+  const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAllRequests(getVoterRequests());
+    const unsubscribe = subscribeVoterRequests(() => {
+      setAllRequests(getVoterRequests());
+    });
+    return unsubscribe;
+  }, []);
+
+  const pendingElectionRequests = allRequests.filter(
+    (r) => r.electionId === electionId && r.status === VoterRequestStatus.Pending
+  );
+
+  const handleApproveRequest = async (req: VoterRegistrationRequest) => {
+    if (isLocked) return;
+    setApprovingRequestId(req.id);
+    setRegisterError(null);
+    setRegisterSuccess(null);
+
+    try {
+      if (!contractAddress) throw new Error('Contract address not found.');
+      const hash = await writeContractAsync({
+        address: contractAddress,
+        abi: VOX_CHAIN_ABI,
+        functionName: 'registerVoter',
+        args: [BigInt(electionId), req.voterAddress],
+      });
+
+      if (publicClient && hash) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+
+      approveVoterRequest(req.id, hash, userAddress);
+      setAllRequests(getVoterRequests());
+      setRegisterSuccess(`Voter ${req.voterName} (${req.voterAddress.slice(0, 8)}...) successfully registered on-chain!`);
+      await refetchAll();
+    } catch (err: any) {
+      setRegisterError(parseContractError(err));
+    } finally {
+      setApprovingRequestId(null);
+    }
+  };
+
+  const handleRejectRequest = (id: string) => {
+    rejectVoterRequest(id, 'Not eligible for this election.', userAddress);
+    setAllRequests(getVoterRequests());
+  };
 
   if (isLoading || !election) {
     return (
@@ -178,6 +237,110 @@ export const AdminVotersPage: React.FC = () => {
             This election is currently active or concluded. Voter registration closes permanently once an election starts to ensure fairness.
           </VoxAlert>
         )}
+
+        {/* ── Incoming Voter Applications Queue (1-Click Approval) ── */}
+        <VoxCard variant="layer-1" padding="lg" className="border-amber-500/30 bg-[#0C0D14]">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-display font-bold text-base text-white">
+                  Incoming Voter Applications
+                </h2>
+                <span className="text-xs text-zinc-400">
+                  Voters who applied via the "Become a Voter" portal for Election #{electionId}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-amber-300 font-semibold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">
+                {pendingElectionRequests.length} Pending
+              </span>
+              <Link to="/approve-voters">
+                <VoxButton variant="outline" size="sm" icon={<ExternalLink className="w-3 h-3" />}>
+                  Full Approval Queue
+                </VoxButton>
+              </Link>
+            </div>
+          </div>
+
+          {pendingElectionRequests.length === 0 ? (
+            <div className="py-6 text-center text-xs text-zinc-500">
+              No pending voter requests for this ballot. Direct voters to{' '}
+              <Link to="/request-voter" className="text-emerald-400 hover:underline">
+                Become a Voter portal
+              </Link>{' '}
+              to submit their wallet address for review.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {pendingElectionRequests.map((req) => {
+                const isApproving = approvingRequestId === req.id;
+
+                return (
+                  <div
+                    key={req.id}
+                    className="p-3.5 rounded-xl border border-white/10 bg-[#12131A] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+                  >
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-xs text-white">
+                          {req.voterName}
+                        </span>
+                        {req.identityInfo && (
+                          <span className="text-[10px] font-mono text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded">
+                            {req.identityInfo}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-zinc-500 font-mono">
+                          {new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <VoxHashPill hash={req.voterAddress} type="address" truncate={true} />
+                      {req.justification && (
+                        <span className="text-xs text-zinc-400 italic">
+                          "{req.justification}"
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <VoxButton
+                        variant="primary"
+                        size="sm"
+                        disabled={isApproving || isLocked}
+                        onClick={() => handleApproveRequest(req)}
+                        icon={
+                          isApproving ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Check className="w-3 h-3" />
+                          )
+                        }
+                      >
+                        {isApproving ? 'Whitelisting...' : 'Approve & Whitelist'}
+                      </VoxButton>
+
+                      <VoxButton
+                        variant="outline"
+                        size="sm"
+                        disabled={isApproving || isLocked}
+                        onClick={() => handleRejectRequest(req.id)}
+                        className="text-rose-400 hover:text-rose-300"
+                        icon={<X className="w-3 h-3" />}
+                      >
+                        Reject
+                      </VoxButton>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </VoxCard>
 
         {/* Grid: Register Form + Live Address Tester */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">

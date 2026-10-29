@@ -7,9 +7,10 @@ export const HARDHAT_CONTRACT_ADDRESS: `0x${string}` =
   (import.meta.env.VITE_HARDHAT_CONTRACT_ADDRESS as `0x${string}`) ||
   '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
-// Sepolia deployed contract address from environment
-export const SEPOLIA_CONTRACT_ADDRESS: `0x${string}` | undefined =
-  (import.meta.env.VITE_VOXCHAIN_CONTRACT_ADDRESS as `0x${string}`) || undefined;
+// Sepolia deployed contract address from environment or deployed ignition artifacts
+export const SEPOLIA_CONTRACT_ADDRESS: `0x${string}` =
+  (import.meta.env.VITE_VOXCHAIN_CONTRACT_ADDRESS as `0x${string}`) ||
+  '0x9ecd0c8cb4aE359EB05B955F9331f5d324b7E025';
 
 // Default contract address for fallback/backwards compatibility
 export const DEFAULT_CONTRACT_ADDRESS: `0x${string}` =
@@ -20,9 +21,10 @@ export const HARDHAT_REGISTRY_ADDRESS: `0x${string}` =
   (import.meta.env.VITE_HARDHAT_REGISTRY_ADDRESS as `0x${string}`) ||
   '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
-// Sepolia registry address (from env when deployed, undefined by default)
-export const SEPOLIA_REGISTRY_ADDRESS: `0x${string}` | undefined =
-  (import.meta.env.VITE_VOXCHAIN_REGISTRY_ADDRESS as `0x${string}`) || undefined;
+// Sepolia registry address (from env when deployed, fallback to deployed address)
+export const SEPOLIA_REGISTRY_ADDRESS: `0x${string}` =
+  (import.meta.env.VITE_VOXCHAIN_REGISTRY_ADDRESS as `0x${string}`) ||
+  '0x65F3ec5560B19434f5F043B9227E3F183CaF1630';
 
 export const DEFAULT_REGISTRY_ADDRESS: `0x${string}` =
   SEPOLIA_REGISTRY_ADDRESS || HARDHAT_REGISTRY_ADDRESS;

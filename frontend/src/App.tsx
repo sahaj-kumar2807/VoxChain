@@ -15,6 +15,8 @@ import { AdminVotersPage } from './pages/AdminVotersPage';
 import { AdminControlPage } from './pages/AdminControlPage';
 import { SuperAdminPage } from './pages/SuperAdminPage';
 import { RequestAdminPage } from './pages/RequestAdminPage';
+import { RequestVoterPage } from './pages/RequestVoterPage';
+import { ApproveVotersPage } from './pages/ApproveVotersPage';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -116,6 +118,11 @@ const AppContent: React.FC = () => {
 
                   {/* Super Admin Route */}
                   <Route path="/super-admin" element={<SuperAdminPage />} />
+
+                  {/* Voter Verification & Approval Routes */}
+                  <Route path="/approve-voters" element={<ApproveVotersPage />} />
+                  <Route path="/request-voter" element={<RequestVoterPage />} />
+                  <Route path="/become-voter" element={<RequestVoterPage />} />
 
                   {/* Public Organisation Onboarding Routes */}
                   <Route path="/request-admin" element={<RequestAdminPage />} />

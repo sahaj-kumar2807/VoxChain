@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { isAddress } from 'viem';
 import { useAccount, useChainId } from 'wagmi';
 import { useVoxChainRegistry } from '../hooks/useVoxChainRegistry';
@@ -246,6 +247,17 @@ export const SuperAdminPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link to="/approve-voters">
+              <VoxButton
+                variant="outline"
+                size="md"
+                className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/50"
+                icon={<UserCheck className="w-4 h-4 text-amber-400" />}
+              >
+                Approve Voters
+              </VoxButton>
+            </Link>
+
             <VoxButton
               variant="primary"
               size="md"

@@ -48,7 +48,9 @@ export const HeaderNav: React.FC = () => {
 
   const navLinks = [
     { name: 'Elections', path: '/dashboard' },
+    { name: 'Become a Voter', path: '/request-voter' },
     { name: 'Become an Admin', path: '/request-admin' },
+    ...(isUserAdmin || isOrgAdmin || isSuperAdmin ? [{ name: 'Approve Voters', path: '/approve-voters' }] : []),
     ...(isUserAdmin || isOrgAdmin ? [{ name: 'Org Admin', path: '/admin' }] : []),
     ...(isSuperAdmin ? [{ name: 'Super Admin', path: '/super-admin' }] : []),
   ];

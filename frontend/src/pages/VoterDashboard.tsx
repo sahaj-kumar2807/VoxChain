@@ -19,8 +19,10 @@ import {
   Trophy,
   Lock,
   Layers,
-  Building2,
   Crown,
+  UserCheck,
+  UserPlus,
+  Building2,
 } from 'lucide-react';
 import type { ElectionFilter } from '../types';
 
@@ -98,6 +100,30 @@ export const VoterDashboard: React.FC = () => {
                   Connect Wallet
                 </VoxButton>
               </div>
+            )}
+
+            <Link to="/request-voter">
+              <VoxButton
+                variant="outline"
+                size="sm"
+                className="border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                icon={<UserPlus className="w-3.5 h-3.5 text-emerald-400" />}
+              >
+                Become a Voter
+              </VoxButton>
+            </Link>
+
+            {(isSuperAdmin || isUserAdmin || isOrgAdmin) && (
+              <Link to="/approve-voters">
+                <VoxButton
+                  variant="outline"
+                  size="sm"
+                  className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/50"
+                  icon={<UserCheck className="w-3.5 h-3.5 text-amber-400" />}
+                >
+                  Approve Voters
+                </VoxButton>
+              </Link>
             )}
 
             {isSuperAdmin && (

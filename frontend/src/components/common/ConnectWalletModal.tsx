@@ -12,17 +12,20 @@ interface ConnectWalletModalProps {
 interface ParsedError {
   title: string;
   message: string;
-  isInstallMetaMask?: boolean;
+  installUrl?: string;
+  installLabel?: string;
   isPending?: boolean;
 }
 
-function parseWeb3Error(err: unknown, hasInjected: boolean): ParsedError {
-  console.error('[VOXCHAIN] Full error details:', err);
+function parseWeb3Error(err: unknown, walletName?: string, fallbackInstallUrl?: string): ParsedError {
+  console.error(`[VOXCHAIN] ${walletName || 'Wallet'} error details:`, err);
 
   if (!err) {
     return {
       title: 'Connection Failed',
       message: 'Could not connect to your wallet. Please try again.',
+      installUrl: fallbackInstallUrl,
+      installLabel: fallbackInstallUrl ? `Get ${walletName || 'Wallet'}` : undefined,
     };
   }
 
@@ -64,7 +67,7 @@ function parseWeb3Error(err: unknown, hasInjected: boolean): ParsedError {
 
   const combined = `${rawMsg} ${String(code || '')}`.toLowerCase();
 
-  // 1. User Rejected
+  // 1. User Rejected / Closed Modal
   if (
     code === 4001 ||
     code === '4001' ||
@@ -72,11 +75,12 @@ function parseWeb3Error(err: unknown, hasInjected: boolean): ParsedError {
     combined.includes('user rejected') ||
     combined.includes('rejected') ||
     combined.includes('user denied') ||
-    combined.includes('user cancelled')
+    combined.includes('user cancelled') ||
+    combined.includes('closed modal')
   ) {
     return {
       title: 'Sign-in Cancelled',
-      message: 'The connection request was closed in your wallet.',
+      message: `The connection request was closed in ${walletName || 'your wallet'}.`,
     };
   }
 
@@ -90,17 +94,18 @@ function parseWeb3Error(err: unknown, hasInjected: boolean): ParsedError {
   ) {
     return {
       title: 'Action Required in Wallet',
-      message: 'A connection request is waiting for your confirmation. Please open your wallet extension to approve it.',
+      message: `A connection request is pending. Please open ${walletName || 'your wallet'} to approve it.`,
       isPending: true,
     };
   }
 
   // 3. Provider / Wallet Not Found
-  if (!hasInjected || combined.includes('not found') || combined.includes('no provider') || combined.includes('connectornotfound')) {
+  if (combined.includes('not found') || combined.includes('no provider') || combined.includes('connectornotfound')) {
     return {
-      title: 'Wallet Not Detected',
-      message: 'No digital wallet extension found in this browser. Please install MetaMask to continue.',
-      isInstallMetaMask: true,
+      title: `${walletName || 'Wallet'} Not Detected`,
+      message: `No active extension found for ${walletName || 'this wallet'} in your browser. You can install it or open its official download page below.`,
+      installUrl: fallbackInstallUrl,
+      installLabel: `Get ${walletName || 'Wallet'}`,
     };
   }
 
@@ -116,7 +121,9 @@ function parseWeb3Error(err: unknown, hasInjected: boolean): ParsedError {
     title: 'Connection Issue',
     message: rawMsg && rawMsg !== '[object Object]' && rawMsg.length < 200
       ? rawMsg
-      : 'Failed to connect. Please make sure your wallet is unlocked and try again.',
+      : `Failed to connect with ${walletName || 'wallet'}. Please make sure your wallet is unlocked and try again.`,
+    installUrl: fallbackInstallUrl,
+    installLabel: fallbackInstallUrl ? `Get ${walletName || 'Wallet'}` : undefined,
   };
 }
 
@@ -157,36 +164,45 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
     }
   }, [isOpen]);
 
-  const ethereum = typeof window !== 'undefined' ? (window as unknown as { ethereum?: Record<string, unknown> }).ethereum : undefined;
-  const hasInjected = Boolean(ethereum);
-  const isMetaMaskDetected = Boolean(ethereum?.isMetaMask);
-  const isCoinbaseDetected = Boolean(ethereum?.isCoinbaseWallet);
+  const anyWin = typeof window !== 'undefined' ? (window as any) : undefined;
+  const isMetaMaskDetected = Boolean(
+    anyWin && (
+      anyWin.ethereum?.isMetaMask ||
+      anyWin.ethereum?.providers?.some((p: any) => p.isMetaMask)
+    )
+  );
 
-  const handleConnect = async (connector: (typeof connectors)[number]) => {
+  const isCoinbaseDetected = Boolean(
+    anyWin && (
+      anyWin.coinbaseWalletExtension ||
+      anyWin.ethereum?.isCoinbaseWallet ||
+      anyWin.ethereum?.providers?.some((p: any) => p.isCoinbaseWallet)
+    )
+  );
+
+  const hasInjected = Boolean(anyWin?.ethereum);
+
+  const handleConnect = async (
+    connector: (typeof connectors)[number] | undefined,
+    walletName: string,
+    installUrl: string
+  ) => {
     try {
       setErrorDetails(null);
-      setConnectingId(connector.id);
 
-      if (typeof window !== 'undefined') {
-        const anyWindow = window as unknown as { ethereum?: { request?: (args: { method: string }) => Promise<unknown> } };
-        if (anyWindow.ethereum && typeof anyWindow.ethereum.request === 'function') {
-          try {
-            await anyWindow.ethereum.request({ method: 'eth_requestAccounts' });
-          } catch (directErr: unknown) {
-            const parsed = parseWeb3Error(directErr, true);
-            if (parsed.title === 'Sign-in Cancelled' || parsed.title === 'Action Required in Wallet') {
-              setErrorDetails(parsed);
-              return;
-            }
-          }
-        }
+      if (!connector) {
+        window.open(installUrl, '_blank', 'noopener,noreferrer');
+        return;
       }
 
+      setConnectingId(connector.id);
+
+      // Connect strictly through the selected connector (no global window.ethereum hijack)
       await connectAsync({ connector });
       onClose();
     } catch (err: unknown) {
-      console.error('[VOXCHAIN] Connection failed:', err);
-      setErrorDetails(parseWeb3Error(err, hasInjected));
+      console.error(`[VOXCHAIN] ${walletName} connection failed:`, err);
+      setErrorDetails(parseWeb3Error(err, walletName, installUrl));
     } finally {
       setConnectingId(null);
     }
@@ -230,18 +246,22 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
     badge?: string;
     connector?: (typeof connectors)[number];
     icon: React.ReactNode;
+    officialUrl: string;
+    installLabel: string;
     onClick: () => void;
   }
 
   const walletOptions: WalletOption[] = [];
 
-  // MetaMask Option (Always listed once)
+  // MetaMask Option
   walletOptions.push({
     id: 'metamask',
     name: 'MetaMask',
     subtitle: isMetaMaskDetected || metaMaskConnector ? 'Ready to connect' : 'Popular browser extension & mobile app',
     badge: isMetaMaskDetected ? 'Detected' : undefined,
     connector: metaMaskConnector,
+    officialUrl: 'https://metamask.io/download/',
+    installLabel: 'Install MetaMask',
     icon: (
       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
         <path d="M21.5 7.5L13.8 2.3C13.3 2 12.7 2 12.2 2.3L4.5 7.5C4.2 7.7 4 8 4 8.4L2.1 14.8C1.9 15.6 2.3 16.4 3.1 16.7L12 21.5L20.9 16.7C21.7 16.4 22.1 15.6 21.9 14.8L20 8.4C20 8 19.8 7.7 21.5 7.5Z" fill="#E2761B" stroke="#E2761B" strokeWidth="0.5"/>
@@ -255,53 +275,53 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
     ),
     onClick: () => {
       if (metaMaskConnector) {
-        handleConnect(metaMaskConnector);
+        handleConnect(metaMaskConnector, 'MetaMask', 'https://metamask.io/download/');
       } else if (hasInjected) {
         const fallback = connectors.find((c) => c.id === 'injected');
-        if (fallback) handleConnect(fallback);
+        handleConnect(fallback, 'MetaMask', 'https://metamask.io/download/');
       } else {
-        window.open('https://metamask.io/download/', '_blank');
+        window.open('https://metamask.io/download/', '_blank', 'noopener,noreferrer');
       }
     },
   });
 
   // Coinbase Wallet Option
-  if (coinbaseConnector) {
-    walletOptions.push({
-      id: 'coinbase',
-      name: 'Coinbase Wallet',
-      subtitle: isCoinbaseDetected ? 'Ready to connect' : 'Mobile app & browser extension',
-      badge: isCoinbaseDetected ? 'Detected' : undefined,
-      connector: coinbaseConnector,
-      icon: (
-        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" fill="#0052FF" />
-          <rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="white" />
-        </svg>
-      ),
-      onClick: () => handleConnect(coinbaseConnector),
-    });
-  }
+  walletOptions.push({
+    id: 'coinbase',
+    name: 'Coinbase Wallet',
+    subtitle: isCoinbaseDetected ? 'Ready to connect' : 'Mobile app & browser extension',
+    badge: isCoinbaseDetected ? 'Detected' : undefined,
+    connector: coinbaseConnector,
+    officialUrl: 'https://www.coinbase.com/wallet/downloads',
+    installLabel: 'Install Coinbase Wallet',
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" fill="#0052FF" />
+        <rect x="8.5" y="8.5" width="7" height="7" rx="1.5" fill="white" />
+      </svg>
+    ),
+    onClick: () => handleConnect(coinbaseConnector, 'Coinbase Wallet', 'https://www.coinbase.com/wallet/downloads'),
+  });
 
   // WalletConnect Option (Mobile QR code, Trust Wallet, Rainbow, etc.)
-  if (walletConnectConnector) {
-    walletOptions.push({
-      id: 'walletconnect',
-      name: 'WalletConnect',
-      subtitle: 'Scan QR code with Trust Wallet, Rainbow, or any mobile app',
-      connector: walletConnectConnector,
-      icon: (
-        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-          <rect width="24" height="24" rx="12" fill="#3B99FC" />
-          <path
-            d="M7.2 9.6C9.85 7 14.15 7 16.8 9.6L17.3 10.1C17.5 10.3 17.5 10.7 17.3 10.9L16 12.2C15.9 12.3 15.7 12.3 15.6 12.2L14.8 11.4C13.25 9.85 10.75 9.85 9.2 11.4L8.4 12.2C8.3 12.3 8.1 12.3 8 12.2L6.7 10.9C6.5 10.7 6.5 10.3 6.7 10.1L7.2 9.6ZM19.2 12L20.4 13.2C20.6 13.4 20.6 13.8 20.4 14L15.6 18.8C15.4 19 15 19 14.8 18.8L12.7 16.7C12.6 16.6 12.4 16.6 12.3 16.7L10.2 18.8C10 19 9.6 19 9.4 18.8L4.6 14C4.4 13.8 4.4 13.4 4.6 13.2L5.8 12C6 11.8 6.4 11.8 6.6 12L8.7 14.1C8.8 14.2 9 14.2 9.1 14.1L11.2 12C11.4 11.8 11.8 11.8 12 12L14.1 14.1C14.2 14.2 14.4 14.2 14.5 14.1L16.6 12C16.8 11.8 17.2 11.8 17.4 12H19.2Z"
-            fill="white"
-          />
-        </svg>
-      ),
-      onClick: () => handleConnect(walletConnectConnector),
-    });
-  }
+  walletOptions.push({
+    id: 'walletconnect',
+    name: 'WalletConnect',
+    subtitle: 'Scan QR code with Trust Wallet, Rainbow, or any mobile app',
+    connector: walletConnectConnector,
+    officialUrl: 'https://walletconnect.com/explorer',
+    installLabel: 'Explore Supported Wallets',
+    icon: (
+      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+        <rect width="24" height="24" rx="12" fill="#3B99FC" />
+        <path
+          d="M7.2 9.6C9.85 7 14.15 7 16.8 9.6L17.3 10.1C17.5 10.3 17.5 10.7 17.3 10.9L16 12.2C15.9 12.3 15.7 12.3 15.6 12.2L14.8 11.4C13.25 9.85 10.75 9.85 9.2 11.4L8.4 12.2C8.3 12.3 8.1 12.3 8 12.2L6.7 10.9C6.5 10.7 6.5 10.3 6.7 10.1L7.2 9.6ZM19.2 12L20.4 13.2C20.6 13.4 20.6 13.8 20.4 14L15.6 18.8C15.4 19 15 19 14.8 18.8L12.7 16.7C12.6 16.6 12.4 16.6 12.3 16.7L10.2 18.8C10 19 9.6 19 9.4 18.8L4.6 14C4.4 13.8 4.4 13.4 4.6 13.2L5.8 12C6 11.8 6.4 11.8 6.6 12L8.7 14.1C8.8 14.2 9 14.2 9.1 14.1L11.2 12C11.4 11.8 11.8 11.8 12 12L14.1 14.1C14.2 14.2 14.4 14.2 14.5 14.1L16.6 12C16.8 11.8 17.2 11.8 17.4 12H19.2Z"
+          fill="white"
+        />
+      </svg>
+    ),
+    onClick: () => handleConnect(walletConnectConnector, 'WalletConnect', 'https://walletconnect.com/explorer'),
+  });
 
   // Other announced browser wallets (Rabby, Phantom, Brave, etc.)
   otherConnectors.forEach((conn) => {
@@ -313,12 +333,14 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
       name: conn.name === 'Injected' ? 'Browser Wallet' : conn.name,
       subtitle: 'Installed browser extension',
       connector: conn,
+      officialUrl: 'https://ethereum.org/en/wallets/',
+      installLabel: 'Learn More',
       icon: (
         <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
           <Globe className="w-3.5 h-3.5" />
         </div>
       ),
-      onClick: () => handleConnect(conn),
+      onClick: () => handleConnect(conn, conn.name, 'https://ethereum.org/en/wallets/'),
     });
   });
 
@@ -401,20 +423,20 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
               <div className="flex-1">
                 <p className="font-semibold text-rose-200 mb-1">{errorDetails.title}</p>
-                <p className="text-xs text-rose-300/90 mb-2">{errorDetails.message}</p>
-                {errorDetails.isInstallMetaMask && (
+                <p className="text-xs text-rose-300/90 mb-2.5">{errorDetails.message}</p>
+                {errorDetails.installUrl && (
                   <a
-                    href="https://metamask.io/download/"
+                    href={errorDetails.installUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:underline"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/40 text-xs font-semibold transition-colors"
                   >
-                    <span>Download MetaMask</span>
+                    <span>{errorDetails.installLabel || 'Open Official Download Page'}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
                 {errorDetails.isPending && (
-                  <span className="text-[11px] text-amber-300 block font-semibold">
+                  <span className="text-[11px] text-amber-300 block font-semibold mt-2">
                     Tip: Look at the top-right toolbar of Chrome / Brave for your wallet notification.
                   </span>
                 )}
@@ -433,24 +455,26 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
             </div>
           )}
 
-          {/* Curated Wallet Options (Zero Duplicates) */}
+          {/* Curated Wallet Options with Direct Official Links */}
           <div className="flex flex-col gap-2.5 mb-5">
             {walletOptions.map((wallet) => {
               const isBusy = isPending && connectingId === wallet.connector?.id;
 
               return (
-                <button
+                <motion.div
                   key={wallet.id}
                   onClick={wallet.onClick}
-                  disabled={isPending}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-[#292D33] bg-[#121316] hover:bg-[#1B1D24] hover:border-emerald-500/40 transition-all cursor-pointer group disabled:opacity-50 text-left"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 26 }}
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-[#292D33] bg-[#121316] hover:bg-[#181B22] hover:border-emerald-500/50 hover:shadow-[0_12px_28px_rgba(0,0,0,0.8),0_0_18px_rgba(16,185,129,0.18)] cursor-pointer group text-left select-none"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-[#07080A] border border-[#292D33] flex items-center justify-center shrink-0 group-hover:border-emerald-500/30 transition-colors">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#07080A] border border-[#292D33] flex items-center justify-center shrink-0 group-hover:border-emerald-500/40 group-hover:scale-105 transition-all">
                       {wallet.icon}
                     </div>
-                    <div className="flex flex-col items-start">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-start min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-white group-hover:text-emerald-300 transition-colors">
                           {wallet.name}
                         </span>
@@ -460,23 +484,36 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-zinc-400 line-clamp-1">
+                      <span className="text-xs text-zinc-400 truncate max-w-[210px] sm:max-w-[240px]">
                         {wallet.subtitle}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 ml-2">
-                    {isBusy ? (
-                      <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="hidden sm:inline">Connecting…</span>
-                      </div>
-                    ) : (
-                      <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
-                    )}
+                    {/* Direct Official Link / Install Shortcut */}
+                    <a
+                      href={wallet.officialUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      title={`Open official ${wallet.name} site / download`}
+                      className="px-2 py-1 rounded-md border border-white/10 bg-[#161820] text-[11px] font-mono text-zinc-400 hover:text-emerald-300 hover:border-emerald-500/40 hover:bg-[#1E232E] transition-all flex items-center gap-1 group/btn"
+                    >
+                      <span>Get</span>
+                      <ExternalLink className="w-3 h-3 group-hover/btn:text-emerald-400 transition-colors" />
+                    </a>
+
+                    {/* Connect Trigger */}
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      {isBusy ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                      ) : (
+                        <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                      )}
+                    </div>
                   </div>
-                </button>
+                </motion.div>
               );
             })}
           </div>
@@ -484,12 +521,50 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
           {/* Pending approval reminder if connecting */}
           {isPending && (
             <div className="mb-4 p-3 rounded-lg bg-[#121316] border border-[#292D33] text-center text-xs text-zinc-300 animate-pulse">
-              Please check your wallet pop-up to approve the connection.
+              Please check your wallet pop-up or mobile device to approve connection.
             </div>
           )}
 
+          {/* Direct Wallet Links Helper Box */}
+          <div className="mb-4 p-3 rounded-xl bg-[#090A0E] border border-white/5 text-xs text-zinc-400">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block mb-1.5">
+              Official Wallet Download & Documentation:
+            </span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-mono">
+              <a
+                href="https://metamask.io/download/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-400 hover:text-emerald-400 inline-flex items-center gap-1 transition-colors"
+              >
+                <span>MetaMask</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+              <span className="text-zinc-700">•</span>
+              <a
+                href="https://www.coinbase.com/wallet/downloads"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-400 hover:text-emerald-400 inline-flex items-center gap-1 transition-colors"
+              >
+                <span>Coinbase Wallet</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+              <span className="text-zinc-700">•</span>
+              <a
+                href="https://walletconnect.com/explorer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-400 hover:text-emerald-400 inline-flex items-center gap-1 transition-colors"
+              >
+                <span>WalletConnect</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            </div>
+          </div>
+
           {/* Footer Guidance */}
-          <div className="pt-3.5 border-t border-[#1C212B] flex items-center justify-between text-xs text-zinc-400">
+          <div className="pt-3 border-t border-[#1C212B] flex items-center justify-between text-xs text-zinc-400">
             <span>Network: Ethereum Sepolia</span>
             <a
               href="https://ethereum.org/en/wallets/"
